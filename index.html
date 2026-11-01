@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1267d6">
-<title>Quét mã đơn hàng v1.5</title>
+<title>Quét mã đơn hàng v1.5.1</title>
 <style>
 :root{font-family:Arial,Helvetica,sans-serif;color:#172033;background:#f2f5fa}
 *{box-sizing:border-box}
@@ -53,7 +53,7 @@ h2{font-size:17px;margin:0}
 </head>
 <body>
 <main class="app">
-<header class="header"><div class="logo">⌗</div><div><h1>QUÉT MÃ ĐƠN HÀNG</h1><p>Khung xanh nhận diện mã · Báo trùng · Copy danh sách · v1.5</p></div></header>
+<header class="header"><div class="logo">⌗</div><div><h1>QUÉT MÃ ĐƠN HÀNG</h1><p>Khung xanh nhận diện mã · Báo trùng · Copy danh sách · v1.5.1</p></div></header>
 <section class="panel" id="scanPanel">
   <div class="headrow"><div><h2>Máy quét</h2><p class="muted">Camera sau · Khung xanh bám theo mã được nhận diện.</p></div><span class="pill" id="status">Chưa bật camera</span></div>
   <div class="scanbox" id="scanBox">
@@ -142,6 +142,7 @@ async function startNative(){const supported=await BarcodeDetector.getSupportedF
   loop();}
 async function startFallback(){
   await loadFallbackLibrary();
+
   $('fallbackReader').classList.remove('hidden');
   video.classList.add('hidden');
 
@@ -149,26 +150,26 @@ async function startFallback(){
   const selected=fallbackFormats.map(k=>supported[k]).filter(v=>typeof v==='number');
   fallback=new Html5Qrcode('fallbackReader',{verbose:false,formatsToSupport:selected});
 
-  // iOS riêng: giới hạn video 720p, giảm vùng ảnh phải giải mã,
-  // và bỏ lượt thử ảnh lật ngang vì camera sau không tạo ảnh gương.
-  // Điều này giảm tải CPU cho Safari/Chrome trên iPhone mà không đổi Android.
-  const iosScanConfig={
-    fps:20,
-    qrbox:(w,h)=>({
-      width:Math.max(100,Math.min(Math.floor(w*.90),640)),
-      height:Math.max(100,Math.min(Math.floor(h*.65),360))
-    }),
-    disableFlip:true,
-    videoConstraints:{
-      facingMode:{ideal:'environment'},
-      width:{ideal:1280,max:1280},
-      height:{ideal:720,max:720},
-      frameRate:{ideal:24,max:30}
-    }
+  // iOS: dùng constraints tiêu chuẩn của getUserMedia qua cameraIdOrConfig.
+  // Không dùng videoConstraints (API beta của html5-qrcode) vì Safari iOS
+  // có thể xử lý không đồng nhất. Không tắt flip để tránh bỏ sót QR trên feed bị mirror.
+  const iosCameraConfig={
+    facingMode:{ideal:'environment'},
+    width:{ideal:1280},
+    height:{ideal:720}
   };
 
-  // Giữ nguyên hoàn toàn cấu hình quét hiện tại trên Android và thiết bị khác.
-  const defaultScanConfig={
+  const iosScanConfig={
+    fps:15,
+    qrbox:(w,h)=>({
+      width:Math.max(160,Math.min(Math.floor(w*.90),640)),
+      height:Math.max(140,Math.min(Math.floor(h*.78),480))
+    })
+  };
+
+  // Giữ nguyên cấu hình Android đang hoạt động tốt.
+  const androidCameraConfig={facingMode:'environment'};
+  const androidScanConfig={
     fps:20,
     qrbox:(w,h)=>({
       width:Math.max(180,Math.floor(Math.min(w*.90,640))),
@@ -176,9 +177,11 @@ async function startFallback(){
     })
   };
 
-  const scanConfig=IS_IOS?iosScanConfig:defaultScanConfig;
+  const cameraConfig=IS_IOS?iosCameraConfig:androidCameraConfig;
+  const scanConfig=IS_IOS?iosScanConfig:androidScanConfig;
+
   await fallback.start(
-    {facingMode:'environment'},
+    cameraConfig,
     scanConfig,
     (text,result)=>{
       const info=result?.result||result||{};
@@ -190,7 +193,7 @@ async function startFallback(){
 
   scanning=true;
   $('placeholder').classList.add('hidden');
-  status(IS_IOS?'iPhone · Tối ưu quét':'Đang dùng camera sau',true);
+  status(IS_IOS?'iPhone · Chế độ tương thích':'Đang dùng camera sau',true);
 } 
 async function start(){if(scanning||completed)return;unlockAudio();$('startBtn').disabled=true;feedback('Đang mở camera sau…');try{if(!navigator.mediaDevices?.getUserMedia)throw new Error('Hãy mở app bằng HTTPS trên Chrome hoặc Safari.');if('BarcodeDetector'in window&&typeof BarcodeDetector.getSupportedFormats==='function'){try{await startNative();feedback('Camera sau đã bật. Khi nhận mã, khung xanh sẽ xuất hiện quanh mã.','success');}catch(e){console.warn('Chuyển sang bộ quét dự phòng:',e);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.srcObject=null;detector=null;await startFallback();feedback('Camera sau đã bật ở chế độ tương thích.','success');}}else{await startFallback();feedback('Camera sau đã bật ở chế độ tương thích.','success');}$('stopBtn').disabled=false;}catch(e){console.error(e);const msg=e.name==='NotAllowedError'?'Bạn chưa cấp quyền camera.':e.name==='NotFoundError'?'Không tìm thấy camera sau.':e.name==='NotReadableError'?'Camera đang được ứng dụng khác sử dụng.':(e.message||'Không thể mở camera.');feedback(msg,'error');status('Chưa bật camera');$('startBtn').disabled=false;}}
 async function stop(){scanning=false;if(loopTimer)clearTimeout(loopTimer);loopTimer=null;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}video.srcObject=null;video.classList.add('hidden');detector=null;if(fallback){try{await fallback.stop();}catch(e){}try{fallback.clear();}catch(e){}fallback=null;}$('fallbackReader').classList.add('hidden');$('placeholder').classList.remove('hidden');$('startBtn').disabled=completed;$('stopBtn').disabled=true;status(completed?'Đã hoàn thành':'Đã tắt camera');heldCode='';lastDetectedAt=0;clearOverlay();}
