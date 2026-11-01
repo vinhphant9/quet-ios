@@ -1,467 +1,569 @@
+
 <!doctype html>
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1267d6">
-<title>Quét mã đơn hàng - iOS riêng</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>QR Scanner</title>
 <style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#172033;background:#f2f5fa}
 *{box-sizing:border-box}
-body{margin:0;padding:12px}
-.app{max-width:720px;margin:auto}
-.header{display:flex;align-items:center;gap:12px;margin:8px 0 16px}
-.logo{width:46px;height:46px;border-radius:14px;background:#1267d6;color:#fff;display:grid;place-items:center;font-size:28px;font-weight:bold}
-h1{font-size:20px;margin:0}.header p,.muted{font-size:13px;color:#738097;margin:5px 0}
-.panel{background:#fff;border-radius:16px;padding:15px;box-shadow:0 4px 18px #0000000d}
-.headrow,.listhead,.resultbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
-h2{font-size:17px;margin:0}
-.pill,.count{font-size:12px;padding:7px 10px;border-radius:20px;background:#edf1f7;color:#596579;flex-shrink:0}
-.pill.live{background:#e1f7e9;color:#16723a}
-.scanbox{position:relative;isolation:isolate;margin-top:14px;background:#101827;border-radius:12px;overflow:hidden;min-height:260px}
-#reader{width:100%;min-height:260px;background:#101827}
-#reader video{display:block;width:100%!important;height:auto!important;max-height:480px;object-fit:contain!important;background:#101827}
-#reader__scan_region{min-height:230px}
-#reader__dashboard_section,#reader__dashboard_section_csr,#reader__dashboard_section_fsr{display:none!important}
-#scanOverlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
-.placeholder{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;text-align:center;padding:20px;pointer-events:none}
-.placeholder .cam{font-size:44px}.placeholder small{color:#aab8ce}
+body{margin:0;background:#101827;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.app{width:min(100%,760px);margin:auto;padding:14px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 12px}
+.top h1{font-size:19px;margin:0}
+.state{font-size:12px;color:#c8d3e2;background:#263449;border-radius:20px;padding:7px 10px}
+.state.on{color:#a8ffc0;background:#123e2a}
+.view{position:relative;width:100%;aspect-ratio:3/4;max-height:78vh;min-height:320px;overflow:hidden;border-radius:18px;background:#000;isolation:isolate}
+.view video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.view canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;color:#dce7f5;text-align:center;padding:24px;pointer-events:none}
+.placeholder b{font-size:20px}
+.placeholder small{color:#9eacc0}
+.controls{display:flex;gap:10px;margin-top:12px}
+.btn{border:0;border-radius:12px;min-height:48px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer}
+.start{flex:1;background:#1976e8;color:#fff}
+.stop{background:#29374b;color:#fff}
+.btn:disabled{opacity:.45}
+.result{margin-top:12px;padding:14px;border-radius:14px;background:#1b293c;border:1px solid #30435d;min-height:64px}
+.result .label{color:#9eafc5;font-size:12px;margin-bottom:6px}
+.result .value{font-size:15px;line-height:1.45;overflow-wrap:anywhere;color:#a7ffbd;font-weight:700}
+.hint{color:#9eafc5;font-size:12px;line-height:1.5;text-align:center;margin:12px 4px 0}
 .hidden{display:none!important}
-.live-code{margin-top:9px;min-height:40px;padding:10px 12px;border:1px solid #b8ebc8;background:#effbf2;border-radius:10px;color:#11743a;font-size:13px;font-weight:700;overflow-wrap:anywhere}
-.controls,.actions{display:flex;gap:9px;margin-top:12px}
-.btn{border:0;border-radius:10px;padding:13px 12px;font-size:14px;font-weight:700;cursor:pointer;min-height:45px}
-.primary{background:#1267d6;color:#fff;flex:1}.secondary{background:#eef2f8;color:#344054}.danger{background:#fff0f0;color:#b42318}.finish{background:#168344;color:#fff;flex:1}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.feedback{margin-top:12px;padding:13px;border-radius:10px;background:#f0f4fa;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
-.feedback.success{background:#e7f8ed;color:#126b35}.feedback.duplicate,.feedback.error{background:#fff0f0;color:#b42318}
-.feedback small{display:block;margin-top:5px;font-weight:400;opacity:.85}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}
-.stat{background:#f4f6fa;border-radius:10px;padding:12px 5px;text-align:center}
-.num{font-size:25px;font-weight:800;color:#1267d6}.num.red{color:#c32c2c}.label{font-size:12px;color:#69758a;margin-top:4px}
-.listhead{margin:19px 0 10px}.list{max-height:260px;overflow:auto;border:1px solid #e8edf4;border-radius:10px}
-.empty{text-align:center;padding:22px;color:#8993a4;font-size:13px}
-.item{display:flex;gap:10px;padding:10px;border-bottom:1px solid #edf0f5;font-size:14px}.item:last-child{border:0}
-.idx{color:#8993a4;min-width:25px}.value{overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace}
-.copyrow{margin-top:10px}.copyrow button{width:100%}.copymsg{min-height:20px;color:#168344;font-size:13px;margin-top:8px}
-.manual{margin-top:14px;padding-top:13px;border-top:1px solid #eee}.manual label{display:block;font-size:12px;color:#657187;margin-bottom:7px}
-.manualrow{display:flex;gap:8px}.manual input{flex:1;min-width:0;border:1px solid #d7deea;border-radius:9px;padding:12px;font-size:16px}
-.note{font-size:12px;color:#8791a2;line-height:1.5;margin-top:13px}
-.result{display:none}.result.show{display:block}.result h2{margin:10px 0;font-size:20px}
-.result textarea{width:100%;height:300px;border:1px solid #d7deea;border-radius:10px;padding:12px;font:14px/1.6 ui-monospace,Consolas,monospace}
-.resultbar{margin:18px 0 10px}.footer{text-align:center;color:#9aa3b2;font-size:12px;padding:15px}
-@media(max-width:480px){body{padding:10px}.panel{padding:12px}.btn{padding:12px 8px;font-size:13px}.scanbox{min-height:250px}}
+@media(min-width:600px){
+.app{padding:22px}
+.view{aspect-ratio:4/3;max-height:600px}
+}
 </style>
 </head>
 <body>
 <main class="app">
-<header class="header"><div class="logo">⌗</div><div><h1>QUÉT MÃ ĐƠN HÀNG</h1><p>Phiên bản iOS riêng · QR · Mã vạch · Copy danh sách</p></div></header>
-<section class="panel" id="scanPanel">
-  <div class="headrow"><div><h2>Máy quét iPhone</h2><p class="muted">Dùng camera sau và bộ quét tương thích Safari iOS.</p></div><span class="pill" id="status">Chưa bật camera</span></div>
-  <div class="scanbox" id="scanBox">
-    <div id="reader"></div>
-    <canvas id="scanOverlay" aria-hidden="true"></canvas>
-    <div class="placeholder" id="placeholder"><div class="cam">▣</div><strong>Camera sau iPhone sẽ hiển thị tại đây</strong><small>Nhấn Bật camera để cấp quyền và bắt đầu.</small></div>
-  </div>
-  <div class="live-code" id="liveCode">Chưa nhận diện mã nào trong camera.</div>
-  <div class="controls"><button class="btn primary" id="startBtn">BẬT CAMERA SAU</button><button class="btn secondary" id="stopBtn" disabled>TẮT CAMERA</button></div>
-  <div class="feedback" id="feedback" role="status" aria-live="polite">Sẵn sàng quét mã.</div>
-  <div class="stats"><div class="stat"><div class="num" id="successCount">0</div><div class="label">Mã hợp lệ</div></div><div class="stat"><div class="num red" id="duplicateCount">0</div><div class="label">Mã trùng</div></div><div class="stat"><div class="num" id="attemptCount">0</div><div class="label">Lượt nhận</div></div></div>
-  <div class="listhead"><div><h2>Mã đã quét</h2><p class="muted">Mỗi mã chỉ được thêm một lần.</p></div><span class="count" id="listCount">0 mã</span></div>
-  <div class="list" id="scanList"><div class="empty">Chưa có mã nào.</div></div>
-  <div class="copyrow"><button class="btn secondary" id="copyValidBtn" disabled>COPY MÃ HỢP LỆ (0)</button><div class="copymsg" id="copyValidMsg"></div></div>
-  <div class="manual"><label for="manualInput">Nhập mã thủ công nếu cần</label><div class="manualrow"><input id="manualInput" autocomplete="off" placeholder="Nhập mã rồi nhấn Enter"><button class="btn secondary" id="manualBtn">THÊM</button></div></div>
-  <div class="actions"><button class="btn finish" id="finishBtn" disabled>HOÀN THÀNH</button><button class="btn danger" id="resetBtn">XÓA PHIÊN</button></div>
-  <p class="note">Mở bằng Safari trên iPhone qua đường dẫn HTTPS. Khi được hỏi, chọn Cho phép camera. Nếu không mở được, ứng dụng sẽ hiện tên lỗi kỹ thuật để xác định nguyên nhân.</p>
+<header class="top">
+<h1>QUÉT MÃ QR</h1>
+<span id="state" class="state">Chưa bật camera</span>
+</header>
+
+<section class="view" id="view">
+<video id="video" autoplay muted playsinline></video>
+<canvas id="overlay"></canvas>
+<div id="placeholder" class="placeholder">
+<b>📷 Camera QR</b>
+<small>Nhấn “Mở camera” để bắt đầu</small>
+</div>
 </section>
-<section class="panel result" id="resultPanel">
-  <div style="font-size:34px;color:#168344">✓</div><h2>Đã hoàn thành phiên quét</h2><p class="muted" id="summary"></p>
-  <div class="resultbar"><strong>Danh sách mã</strong><span class="count" id="resultCount">0 mã</span></div>
-  <textarea id="resultText" readonly spellcheck="false"></textarea><div class="copymsg" id="copyMsg"></div>
-  <div class="actions"><button class="btn primary" id="copyBtn">COPY DANH SÁCH</button><button class="btn secondary" id="backBtn">QUAY LẠI</button></div>
-  <div class="actions"><button class="btn danger" id="newBtn" style="flex:1">TẠO PHIÊN MỚI</button></div>
+
+<div class="controls">
+<button id="start" class="btn start">MỞ CAMERA SAU</button>
+<button id="stop" class="btn stop" disabled>DỪNG</button>
+</div>
+
+<section class="result" aria-live="polite">
+<div class="label">NỘI DUNG QR ĐANG NHẬN DIỆN</div>
+<div id="value" class="value">Chưa phát hiện mã QR.</div>
 </section>
-<div class="footer">Ứng dụng quét mã dành riêng cho iPhone</div>
+
+<p class="hint">
+Cần mở website bằng HTTPS và cho phép quyền Camera.
+Đưa mã QR vào vùng camera, giữ đủ sáng và để mã nằm trọn trong hình.
+</p>
 </main>
 
 <script>
 'use strict';
 (() => {
 const $ = id => document.getElementById(id);
-const STORE = 'order-code-scanner-session-v1';
-const IOS_FORMAT_NAMES = ['QR_CODE','CODE_128','CODE_39','EAN_13','EAN_8','UPC_A','UPC_E','ITF'];
-let scanner = null;
-let scanning = false;
-let completed = false;
-let codes = [];
-let seen = new Set();
-let duplicates = 0;
-let attempts = 0;
-let heldCode = '';
-let lastDetectedAt = 0;
-let audio = null;
-let overlayTimer = null;
-let cameraIdInUse = '';
+const video = $('video');
+const overlay = $('overlay');
+const ctx = overlay.getContext('2d');
 
-const canvas = $('scanOverlay');
-const ctx = canvas.getContext('2d');
+let stream = null;
+let detector = null;
+let engine = '';
+let running = false;
+let busy = false;
+let timer = 0;
+let lastFound = 0;
+let jsQRLoader = null;
 
-function status(text, live=false) {
-  $('status').textContent = text;
-  $('status').className = 'pill' + (live ? ' live' : '');
-}
-function feedback(text, type='', detail='') {
-  $('feedback').className = 'feedback' + (type ? ' ' + type : '');
-  $('feedback').replaceChildren(document.createTextNode(text));
-  if (detail) {
-    const small = document.createElement('small');
-    small.textContent = detail;
-    $('feedback').appendChild(small);
-  }
-}
-function unlockAudio() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    audio = audio || new AC();
-    if (audio.state === 'suspended') audio.resume().catch(() => {});
-  } catch (e) {}
-}
-function beep(type) {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    audio = audio || new AC();
-    if (audio.state === 'suspended') audio.resume().catch(() => {});
-    const now = audio.currentTime;
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    osc.type = 'sine';
-    osc.connect(gain);
-    gain.connect(audio.destination);
-    gain.gain.setValueAtTime(0.001, now);
-    if (type === 'ok') {
-      osc.frequency.setValueAtTime(1150, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.start(now); osc.stop(now + 0.16);
-    } else {
-      osc.frequency.setValueAtTime(520, now);
-      osc.frequency.setValueAtTime(340, now + 0.17);
-      gain.gain.exponentialRampToValueAtTime(0.15, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      gain.gain.setValueAtTime(0.001, now + 0.17);
-      gain.gain.exponentialRampToValueAtTime(0.15, now + 0.19);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-      osc.start(now); osc.stop(now + 0.33);
-    }
-  } catch (e) {}
-  if (navigator.vibrate) navigator.vibrate(type === 'ok' ? 55 : [100,45,100]);
-}
-function save() {
-  try { localStorage.setItem(STORE, JSON.stringify({codes,duplicates,attempts})); } catch (e) {}
-}
-function render() {
-  $('successCount').textContent = codes.length;
-  $('duplicateCount').textContent = duplicates;
-  $('attemptCount').textContent = attempts;
-  $('listCount').textContent = codes.length + ' mã';
-  $('finishBtn').disabled = !codes.length || completed;
-  $('copyValidBtn').textContent = 'COPY MÃ HỢP LỆ (' + codes.length + ')';
-  $('copyValidBtn').disabled = !codes.length || completed;
-  const list = $('scanList');
-  list.replaceChildren();
-  if (!codes.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty'; empty.textContent = 'Chưa có mã nào.';
-    list.appendChild(empty); return;
-  }
-  codes.forEach((code, i) => {
-    const row = document.createElement('div'); row.className = 'item';
-    const number = document.createElement('span'); number.className = 'idx'; number.textContent = (i+1) + '.';
-    const value = document.createElement('span'); value.className = 'value'; value.textContent = code;
-    row.append(number, value); list.appendChild(row);
-  });
-}
-function acceptCode(raw) {
-  if (completed) return;
-  const code = String(raw || '').trim();
-  if (!code) return;
-  attempts++;
-  if (seen.has(code)) {
-    duplicates++;
-    feedback('⚠ MÃ ĐÃ QUÉT TRƯỚC ĐÓ: ' + code, 'duplicate');
-    beep('duplicate');
-  } else {
-    seen.add(code); codes.push(code);
-    feedback('✓ QUÉT THÀNH CÔNG: ' + code, 'success');
-    beep('ok');
-  }
-  save(); render();
-}
-function resizeOverlay() {
-  const box = $('scanBox').getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.round(box.width * dpr);
-  canvas.height = Math.round(box.height * dpr);
-  canvas.style.width = box.width + 'px';
-  canvas.style.height = box.height + 'px';
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  return {width:box.width,height:box.height};
-}
-function clearOverlay() {
-  if (overlayTimer) clearTimeout(overlayTimer);
-  overlayTimer = null;
-  const size = resizeOverlay();
-  ctx.clearRect(0,0,size.width,size.height);
-}
-function drawLabel(text, x, y, width) {
-  const labelWidth = Math.min(width-16, Math.max(165, text.length*7.2+24));
-  const left = Math.max(8, Math.min(x, width-labelWidth-8));
-  const top = Math.max(24, Math.min(y, canvas.clientHeight-12));
-  ctx.font = 'bold 13px Arial';
-  ctx.fillStyle = '#0a8f43';
-  ctx.fillRect(left,top-22,labelWidth,27);
-  ctx.fillStyle = '#fff';
-  let shown = text;
-  while (ctx.measureText(shown).width > labelWidth-16 && shown.length > 8) shown = shown.slice(0,-4)+'…';
-  ctx.fillText(shown,left+8,top-4);
-}
-function drawCodeBox(decodedResult, code) {
-  const size = resizeOverlay();
-  ctx.clearRect(0,0,size.width,size.height);
-  const result = decodedResult && decodedResult.result ? decodedResult.result : decodedResult;
-  const points = result && Array.isArray(result.resultPoints) ? result.resultPoints : [];
-  if (points.length >= 2) {
-    const xs = points.map(p => p.x), ys = points.map(p => p.y);
-    const left = Math.max(4,Math.min(...xs)-10), top = Math.max(4,Math.min(...ys)-10);
-    const right = Math.min(size.width,Math.max(...xs)+10), bottom = Math.min(size.height,Math.max(...ys)+10);
-    ctx.strokeStyle = '#20e66a'; ctx.lineWidth = 4; ctx.shadowColor = '#00ff68'; ctx.shadowBlur = 12;
-    ctx.strokeRect(left,top,Math.max(30,right-left),Math.max(30,bottom-top)); ctx.shadowBlur = 0;
-    drawLabel('ĐÃ NHẬN: '+code,left,Math.max(28,top-8),size.width);
-  } else {
-    const left = size.width*.12, top = size.height*.15, width = size.width*.76, height = size.height*.70;
-    ctx.strokeStyle = '#20e66a'; ctx.lineWidth = 4; ctx.shadowColor = '#00ff68'; ctx.shadowBlur = 12;
-    ctx.strokeRect(left,top,width,height); ctx.shadowBlur = 0;
-    drawLabel('ĐÃ NHẬN: '+code,left,top+28,size.width);
-  }
-  $('liveCode').textContent = 'MÃ ĐANG HIỂN THỊ: ' + code;
-  overlayTimer = setTimeout(() => {
-    clearOverlay();
-    $('liveCode').textContent = 'Đưa mã tiếp theo vào camera.';
-  }, 1500);
-}
-function onScanSuccess(decodedText, decodedResult) {
-  const code = String(decodedText || '').trim();
-  if (!code) return;
-  drawCodeBox(decodedResult, code);
-  const now = Date.now();
-  if (code === heldCode) { lastDetectedAt = now; return; }
-  heldCode = code; lastDetectedAt = now;
-  acceptCode(code);
-}
-function loadScannerLibrary() {
-  return new Promise((resolve,reject) => {
-    if (window.Html5Qrcode && window.Html5QrcodeSupportedFormats) { resolve(); return; }
-    const urls = [
-      'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
-      'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
-    ];
-    let index = 0;
-    const next = () => {
-      if (index >= urls.length) { reject(new Error('Không tải được thư viện quét. Hãy kiểm tra kết nối Internet.')); return; }
-      const script = document.createElement('script');
-      script.src = urls[index++];
-      script.onload = () => window.Html5Qrcode ? resolve() : next();
-      script.onerror = next;
-      document.head.appendChild(script);
-    };
-    next();
-  });
-}
-function explainCameraError(error) {
-  const name = error && error.name ? error.name : 'CameraError';
-  const messages = {
-    NotAllowedError: 'Safari chưa được cấp quyền camera. Vào Cài đặt iPhone → Safari → Camera → Cho phép, sau đó tải lại trang.',
-    PermissionDeniedError: 'Quyền camera đang bị từ chối. Hãy bật quyền Camera cho Safari trong Cài đặt iPhone.',
-    NotFoundError: 'iPhone không trả về camera nào. Hãy thử mở trang bằng Safari thường, không mở trong ứng dụng trung gian.',
-    NotReadableError: 'Camera đang được ứng dụng khác sử dụng. Đóng Camera, Zalo, FaceTime hoặc ứng dụng gọi video rồi thử lại.',
-    OverconstrainedError: 'Safari không chọn được camera sau theo cấu hình yêu cầu. Hãy kiểm tra camera iPhone.',
-    SecurityError: 'Trang web không có quyền truy cập camera. Hãy mở bằng đường dẫn HTTPS GitHub Pages.',
-    AbortError: 'Safari đã dừng yêu cầu camera. Hãy tải lại trang rồi thử lại.'
-  };
-  return {name, message:messages[name] || (error && error.message) || 'Không thể mở camera trên iPhone.'};
-}
-async function chooseBackCamera() {
-  // getCameras() yêu cầu cấp quyền camera rồi trả về deviceId/label.
-  const cameras = await Html5Qrcode.getCameras();
-  if (!cameras || !cameras.length) throw new DOMException('Safari không tìm thấy camera.', 'NotFoundError');
-  const back = cameras.find(camera => /back|rear|environment|sau|rück|arrière/i.test(camera.label || ''));
-  return back || cameras[0];
-}
-async function makeScanner(formats) {
-  if (scanner) {
-    try { if (scanner.isScanning) await scanner.stop(); } catch (error) {}
-    try { scanner.clear(); } catch (error) {}
-    scanner = null;
-  }
-  $('reader').replaceChildren();
-  scanner = new Html5Qrcode('reader', {verbose:false, formatsToSupport:formats});
-  return scanner;
-}
-async function startWithCamera(target, scanConfig, formats) {
-  await makeScanner(formats);
-  await scanner.start(
-    target,
-    scanConfig,
-    onScanSuccess,
-    () => { if (Date.now() - lastDetectedAt > 900) heldCode = ''; }
-  );
-}
-async function startScanner() {
-  if (scanning || completed) return;
-  $('startBtn').disabled = true;
-  feedback('Đang kiểm tra quyền và khởi động camera iPhone…');
-  status('Đang mở camera');
-  try {
-    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Camera chỉ hoạt động trên HTTPS. Hãy mở đúng đường dẫn GitHub Pages bằng Safari.');
-    }
-    await loadScannerLibrary();
-    const camera = await chooseBackCamera();
-    cameraIdInUse = camera.id;
-    const formats = IOS_FORMAT_NAMES.map(name => Html5QrcodeSupportedFormats[name]).filter(value => typeof value === 'number');
-    const scanConfig = {
-      fps: 10,
-      qrbox: (viewWidth, viewHeight) => ({
-        width: Math.max(160, Math.min(Math.floor(viewWidth * 0.90), 560)),
-        height: Math.max(140, Math.min(Math.floor(viewHeight * 0.72), 400))
-      }),
-      disableFlip: false
-    };
+const scanCanvas = document.createElement('canvas');
+const scanCtx = scanCanvas.getContext('2d',{
+willReadFrequently:true
+});
 
-    // Ưu tiên deviceId do Safari vừa liệt kê sau khi cấp quyền camera.
-    // Nếu iOS từ chối deviceId, thử lại theo facingMode chuẩn của Safari.
-    try {
-      await startWithCamera(camera.id, scanConfig, formats);
-    } catch (deviceError) {
-      console.warn('iOS không mở được camera theo deviceId, thử facingMode:', deviceError);
-      if (deviceError && ['NotAllowedError','PermissionDeniedError','SecurityError'].includes(deviceError.name)) throw deviceError;
-      await startWithCamera({facingMode:'environment'}, scanConfig, formats);
-    }
+function setState(text,on=false){
+$('state').textContent=text;
+$('state').className='state'+(on?' on':'');
+}
 
-    // Ép video do thư viện tạo ra phát inline trên Safari iPhone.
-    const cameraVideo = $('reader').querySelector('video');
-    if (!cameraVideo) throw new Error('Safari đã khởi tạo máy quét nhưng không tạo được khung video. Hãy tải lại trang và thử lại.');
-    cameraVideo.setAttribute('playsinline','');
-    cameraVideo.setAttribute('webkit-playsinline','');
-    cameraVideo.setAttribute('autoplay','');
-    cameraVideo.muted = true;
-    cameraVideo.playsInline = true;
-    try { await cameraVideo.play(); } catch (playError) { console.warn('Video play:',playError); }
+function resizeOverlay(){
+const r=$('view').getBoundingClientRect();
+const dpr=Math.max(1,window.devicePixelRatio||1);
 
-    scanning = true;
-    $('placeholder').classList.add('hidden');
-    $('stopBtn').disabled = false;
-    status('iPhone · Camera đang chạy',true);
-    feedback('Đã mở camera sau. Đưa QR hoặc mã vạch vào giữa hình để quét.','success', 'Camera: ' + (camera.label || 'Camera sau được iPhone chọn'));
-  } catch (error) {
-    console.error('iOS camera error:',error);
-    const detail = explainCameraError(error);
-    status('Không mở được camera');
-    feedback(detail.message,'error', 'Lỗi kỹ thuật: ' + detail.name + (error && error.message ? ' — ' + error.message : ''));
-    $('startBtn').disabled = false;
-    if (scanner) {
-      try { if (scanner.isScanning) await scanner.stop(); } catch (stopError) {}
-      try { scanner.clear(); } catch (clearError) {}
-      scanner = null;
-    }
-    $('reader').replaceChildren();
-  }
+overlay.width=Math.round(r.width*dpr);
+overlay.height=Math.round(r.height*dpr);
+
+ctx.setTransform(dpr,0,0,dpr,0,0);
+
+return {w:r.width,h:r.height};
 }
-async function stopScanner() {
-  scanning = false;
-  if (scanner) {
-    try { if (scanner.isScanning) await scanner.stop(); } catch (error) { console.warn('Stop scanner:',error); }
-    try { scanner.clear(); } catch (error) {}
-    scanner = null;
-  }
-  $('reader').replaceChildren();
-  $('placeholder').classList.remove('hidden');
-  $('startBtn').disabled = completed;
-  $('stopBtn').disabled = true;
-  status(completed ? 'Đã hoàn thành' : 'Đã tắt camera');
-  heldCode = ''; lastDetectedAt = 0; cameraIdInUse = '';
-  clearOverlay();
+
+function clearOverlay(){
+const s=resizeOverlay();
+ctx.clearRect(0,0,s.w,s.h);
 }
-async function finishSession() {
-  if (!codes.length || completed) return;
-  completed = true;
-  await stopScanner();
-  $('scanPanel').classList.add('hidden');
-  $('resultPanel').classList.add('show');
-  $('summary').textContent = `Đã ghi nhận ${codes.length} mã hợp lệ và ${duplicates} lượt trùng.`;
-  $('resultCount').textContent = codes.length + ' mã';
-  $('resultText').value = codes.join('\n');
-  window.scrollTo(0,0);
+
+function videoPointToScreen(p,sourceW,sourceH,screenW,screenH){
+const scale=Math.min(screenW/sourceW,screenH/sourceH);
+const offsetX=(screenW-sourceW*scale)/2;
+const offsetY=(screenH-sourceH*scale)/2;
+
+return {
+x:offsetX+p.x*scale,
+y:offsetY+p.y*scale
+};
 }
-async function copyText(value) {
-  if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(value); return; }
-  const field = document.createElement('textarea');
-  field.value = value; field.setAttribute('readonly','');
-  field.style.position = 'fixed'; field.style.opacity = '0'; field.style.left = '-9999px';
-  document.body.appendChild(field); field.select();
-  const success = document.execCommand('copy'); field.remove();
-  if (!success) throw new Error('Không thể sao chép tự động.');
+
+// Vẽ khung xanh bám theo mã QR.
+function showBox(corners,sourceW,sourceH,text){
+const s=resizeOverlay();
+
+ctx.clearRect(0,0,s.w,s.h);
+
+const pts=corners.map(p=>
+videoPointToScreen(p,sourceW,sourceH,s.w,s.h)
+);
+
+if(pts.length>=4){
+
+ctx.beginPath();
+ctx.moveTo(pts[0].x,pts[0].y);
+
+for(let i=1;i<pts.length;i++){
+ctx.lineTo(pts[i].x,pts[i].y);
 }
-async function copyValidCodes() {
-  if (!codes.length) return;
-  try { await copyText(codes.join('\n')); $('copyValidMsg').textContent = '✓ Đã copy ' + codes.length + ' mã hợp lệ, không gồm mã trùng.'; }
-  catch (error) { $('copyValidMsg').textContent = 'Không copy tự động được. Hãy nhấn Hoàn thành để sao chép danh sách.'; }
+
+ctx.closePath();
+
+ctx.fillStyle='rgba(22,255,105,.12)';
+ctx.fill();
+
+ctx.strokeStyle='#20ff70';
+ctx.lineWidth=4;
+ctx.shadowColor='#00ff68';
+ctx.shadowBlur=13;
+ctx.stroke();
+ctx.shadowBlur=0;
+
+for(const p of pts){
+ctx.beginPath();
+ctx.arc(p.x,p.y,5,0,Math.PI*2);
+ctx.fillStyle='#20ff70';
+ctx.fill();
 }
-async function copyResult() {
-  if (!codes.length) return;
-  try { await copyText(codes.join('\n')); $('copyMsg').textContent = '✓ Đã copy danh sách mã.'; }
-  catch (error) { $('resultText').focus(); $('resultText').select(); $('copyMsg').textContent = 'Đã chọn toàn bộ mã. Chạm giữ và chọn Sao chép.'; }
+
 }
-function addManualCode() {
-  const input = $('manualInput');
-  const code = input.value.trim();
-  if (!code) return;
-  acceptCode(code); input.value = ''; input.focus();
+
+const minX=pts.length?Math.min(...pts.map(p=>p.x)):12;
+const minY=pts.length?Math.min(...pts.map(p=>p.y)):36;
+
+const label='QR ĐÃ NHẬN DIỆN';
+
+ctx.font='bold 13px Arial';
+
+const labelW=ctx.measureText(label).width+20;
+const lx=Math.max(7,Math.min(minX,s.w-labelW-7));
+const ly=Math.max(27,minY-8);
+
+ctx.fillStyle='#0b9c45';
+ctx.fillRect(lx,ly-24,labelW,25);
+
+ctx.fillStyle='#fff';
+ctx.fillText(label,lx+10,ly-7);
+
+$('value').textContent=text;
+lastFound=performance.now();
 }
-async function resetSession() {
-  if (!confirm('Xóa toàn bộ mã của phiên hiện tại?')) return;
-  await stopScanner();
-  codes = []; seen.clear(); duplicates = 0; attempts = 0; completed = false;
-  localStorage.removeItem(STORE);
-  $('scanPanel').classList.remove('hidden'); $('resultPanel').classList.remove('show');
-  $('resultText').value = ''; $('copyMsg').textContent = ''; $('copyValidMsg').textContent = '';
-  $('liveCode').textContent = 'Chưa nhận diện mã nào trong camera.';
-  $('startBtn').disabled = false; status('Chưa bật camera');
-  feedback('Đã tạo phiên mới. Sẵn sàng quét mã.'); render();
+
+function hideLostBox(){
+if(performance.now()-lastFound>300){
+clearOverlay();
+$('value').textContent='Đưa mã QR vào vùng camera.';
 }
-$('startBtn').addEventListener('click', () => { unlockAudio(); startScanner(); });
-$('stopBtn').addEventListener('click', stopScanner);
-$('finishBtn').addEventListener('click', finishSession);
-$('copyValidBtn').addEventListener('click', copyValidCodes);
-$('copyBtn').addEventListener('click', copyResult);
-$('resetBtn').addEventListener('click', resetSession);
-$('newBtn').addEventListener('click', resetSession);
-$('backBtn').addEventListener('click', () => { $('resultPanel').classList.remove('show'); $('scanPanel').classList.remove('hidden'); });
-$('manualBtn').addEventListener('click', () => { unlockAudio(); addManualCode(); });
-$('manualInput').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); unlockAudio(); addManualCode(); } });
-window.addEventListener('resize', () => { if (scanning) clearOverlay(); });
-try {
-  const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
-  if (saved && Array.isArray(saved.codes)) {
-    codes = [...new Set(saved.codes.filter(value => typeof value === 'string' && value.trim()))];
-    seen = new Set(codes);
-    duplicates = Number(saved.duplicates ?? saved.duplicateHits) || 0;
-    attempts = Number(saved.attempts ?? saved.totalHits) || codes.length + duplicates;
-  }
-} catch (error) {}
-render();
-if (codes.length) feedback('Đã khôi phục ' + codes.length + ' mã từ phiên trước.');
+}
+
+// Tọa độ QR từ jsQR.
+function jsQRPoints(result,canvasW,canvasH){
+const l=result.location;
+
+const sx=video.videoWidth/canvasW;
+const sy=video.videoHeight/canvasH;
+
+return [
+l.topLeftCorner,
+l.topRightCorner,
+l.bottomRightCorner,
+l.bottomLeftCorner
+].map(p=>({
+x:p.x*sx,
+y:p.y*sy
+}));
+}
+
+// Tọa độ QR từ bộ giải mã trình duyệt.
+function nativePoints(result){
+
+if(result.cornerPoints&&result.cornerPoints.length>=4){
+return result.cornerPoints.map(p=>({
+x:p.x,
+y:p.y
+}));
+}
+
+if(result.boundingBox){
+
+const b=result.boundingBox;
+
+return [
+{x:b.x,y:b.y},
+{x:b.x+b.width,y:b.y},
+{x:b.x+b.width,y:b.y+b.height},
+{x:b.x,y:b.y+b.height}
+];
+
+}
+
+return [];
+}
+
+// Tải jsQR khi thiết bị không hỗ trợ bộ giải mã native.
+function loadJsQR(){
+
+if(window.jsQR)return Promise.resolve();
+if(jsQRLoader)return jsQRLoader;
+
+jsQRLoader=new Promise((resolve,reject)=>{
+
+const urls=[
+'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js'
+];
+
+let i=0;
+
+const next=()=>{
+
+if(i>=urls.length){
+reject(new Error('Không tải được bộ giải mã QR. Kiểm tra Internet rồi tải lại trang.'));
+return;
+}
+
+const script=document.createElement('script');
+script.src=urls[i++];
+
+script.onload=()=>{
+window.jsQR?resolve():next();
+};
+
+script.onerror=next;
+
+document.head.appendChild(script);
+
+};
+
+next();
+
+});
+
+return jsQRLoader;
+}
+
+// Tự động chọn thuật toán nhanh nhất có sẵn.
+async function chooseEngine(){
+
+if(
+'BarcodeDetector' in window &&
+typeof BarcodeDetector.getSupportedFormats==='function'
+){
+
+try{
+
+const supported=await BarcodeDetector.getSupportedFormats();
+
+if(supported.includes('qr_code')){
+
+detector=new BarcodeDetector({
+formats:['qr_code']
+});
+
+engine='native';
+return;
+
+}
+
+}catch(e){}
+
+}
+
+await loadJsQR();
+engine='jsqr';
+
+}
+
+// Quét bằng BarcodeDetector.
+async function scanNative(){
+
+const found=await detector.detect(video);
+
+if(found&&found.length){
+
+const item=found[0];
+
+const corners=nativePoints(item);
+
+showBox(
+corners,
+video.videoWidth,
+video.videoHeight,
+item.rawValue||'QR đã nhận diện'
+);
+
+}else{
+
+hideLostBox();
+
+}
+
+}
+
+// Quét bằng jsQR.
+function scanWithJsQR(){
+
+const vw=video.videoWidth;
+const vh=video.videoHeight;
+
+if(!vw||!vh)return;
+
+// Giới hạn chiều rộng xử lý tối đa 1280px.
+const scale=Math.min(1,1280/vw);
+
+const w=Math.max(1,Math.round(vw*scale));
+const h=Math.max(1,Math.round(vh*scale));
+
+if(scanCanvas.width!==w||scanCanvas.height!==h){
+scanCanvas.width=w;
+scanCanvas.height=h;
+}
+
+scanCtx.drawImage(video,0,0,w,h);
+
+const image=scanCtx.getImageData(0,0,w,h);
+
+// Ưu tiên tốc độ giải mã QR thông thường.
+const result=window.jsQR(
+image.data,
+w,
+h,
+{inversionAttempts:'dontInvert'}
+);
+
+if(result){
+
+showBox(
+jsQRPoints(result,w,h),
+vw,
+vh,
+result.data
+);
+
+}else{
+
+hideLostBox();
+
+}
+
+}
+
+// Vòng quét liên tục, không cho chạy chồng.
+async function scanLoop(){
+
+if(!running||busy)return;
+
+busy=true;
+
+try{
+
+if(video.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA){
+
+if(engine==='native'){
+await scanNative();
+}else if(engine==='jsqr'){
+scanWithJsQR();
+}
+
+}
+
+}catch(e){
+
+console.warn('QR scan error:',e);
+hideLostBox();
+
+}finally{
+
+busy=false;
+
+if(running){
+timer=setTimeout(
+scanLoop,
+engine==='native'?65:45
+);
+}
+
+}
+
+}
+
+// Mở camera sau.
+async function start(){
+
+if(running)return;
+
+$('start').disabled=true;
+
+setState('Đang mở camera…');
+
+$('value').textContent='Đang khởi động camera sau…';
+
+try{
+
+if(
+!navigator.mediaDevices||
+!navigator.mediaDevices.getUserMedia
+){
+
+throw new Error(
+'Hãy mở website bằng HTTPS trên Safari hoặc Chrome.'
+);
+
+}
+
+// Cấu hình chung cho điện thoại, ưu tiên camera sau.
+stream=await navigator.mediaDevices.getUserMedia({
+
+audio:false,
+
+video:{
+facingMode:{ideal:'environment'},
+width:{ideal:1280},
+height:{ideal:720},
+frameRate:{ideal:30}
+}
+
+});
+
+video.srcObject=stream;
+
+await new Promise((resolve,reject)=>{
+
+if(video.readyState>=1)return resolve();
+
+video.onloadedmetadata=resolve;
+
+video.onerror=()=>{
+reject(new Error('Không đọc được hình ảnh camera.'));
+};
+
+});
+
+await video.play();
+
+$('placeholder').classList.add('hidden');
+
+// Chọn bộ giải mã sau khi camera đã mở.
+await chooseEngine();
+
+running=true;
+
+setState(
+engine==='native'?'Đang quét QR · Native':'Đang quét QR',
+true
+);
+
+$('stop').disabled=false;
+
+$('value').textContent='Đưa mã QR vào camera.';
+
+scanLoop();
+
+}catch(e){
+
+console.error(e);
+
+if(stream){
+stream.getTracks().forEach(t=>t.stop());
+stream=null;
+}
+
+video.srcObject=null;
+
+$('start').disabled=false;
+
+setState('Chưa bật camera');
+
+$('value').textContent=
+e.name==='NotAllowedError'
+?'Bạn chưa cho phép truy cập camera. Hãy bật quyền Camera cho website trong cài đặt Safari.'
+:e.name==='NotFoundError'
+?'Không tìm thấy camera trên thiết bị.'
+:e.name==='NotReadableError'
+?'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.'
+:(e.message||'Không thể mở camera.');
+
+}
+
+}
+
+// Dừng camera.
+function stop(){
+
+running=false;
+
+if(timer)clearTimeout(timer);
+timer=0;
+
+if(stream){
+stream.getTracks().forEach(t=>t.stop());
+stream=null;
+}
+
+video.pause();
+video.srcObject=null;
+
+detector=null;
+engine='';
+
+$('placeholder').classList.remove('hidden');
+$('start').disabled=false;
+$('stop').disabled=true;
+
+setState('Đã tắt camera');
+
+$('value').textContent='Camera đã tắt.';
+
+clearOverlay();
+
+}
+
+$('start').addEventListener('click',start);
+$('stop').addEventListener('click',stop);
+
+window.addEventListener('resize',()=>{
+if(running)clearOverlay();
+});
+
+window.addEventListener('pagehide',()=>{
+if(running)stop();
+});
+
 })();
 </script>
 </body>
